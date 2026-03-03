@@ -1,0 +1,70 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { cartsKeys, getCartsList, getCartById, updateCartById } from '../api/carts'
+import type { UpdateCartPayload, Cart } from '../types/cart'
+import { useCartFiltersStore } from '../store/cartFilters'
+
+export function useCartList() {
+  const { page, limit, userId } = useCartFiltersStore()
+  const skip = (page - 1) * limit
+
+  const query = useQuery({
+    queryKey: cartsKeys.list({
+      limit,
+      skip,
+      userId: userId ? Number(userId) : null,
+    }),
+    queryFn: () =>
+      getCartsList({
+        limit,
+        skip,
+        userId: userId ? Number(userId) : null,
+      }),
+    placeholderData: (previous) => previous,
+  })
+
+  return {
+    ...query,
+    page,
+    limit,
+    userId,
+    skip,
+  }
+}
+
+export function useCart(id: number) {
+  return useQuery({
+    queryKey: cartsKeys.detail(id),
+    queryFn: () => getCartById(id),
+  })
+}
+
+export function useUpdateCart(id: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: UpdateCartPayload) => updateCartById(id, payload),
+    onSuccess: (updatedCart) => {
+      queryClient.setQueryData(cartsKeys.detail(id), updatedCart)
+
+      queryClient.setQueriesData(
+        { queryKey: cartsKeys.all, exact: false },
+        (oldData) => {
+          if (!oldData || typeof oldData !== 'object') return oldData
+
+          if ('carts' in oldData && Array.isArray(oldData.carts)) {
+            const data = oldData as { carts: Cart[]; [key: string]: unknown }
+            return {
+              ...data,
+              carts: data.carts.map((cart) =>
+                cart.id === updatedCart.id ? updatedCart : cart,
+              ),
+            }
+          }
+
+          return oldData
+        },
+      )
+    },
+  })
+}
+
