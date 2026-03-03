@@ -2,6 +2,8 @@
 
 Shopping cart management application built with React, TypeScript, and Vite.
 
+deploy: https://headliner-delta.vercel.app/
+
 ## Quick Start
 
 ### Installation
