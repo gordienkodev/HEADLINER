@@ -66,9 +66,11 @@ export function CartDetailsPage() {
       quantity: p.quantity,
     }))
 
+    const hasRemovedProducts = current.length < cart.products.length
+
     updateMutation.mutate(
       {
-        merge: true,
+        merge: !hasRemovedProducts,
         products: payloadProducts,
       },
       {
