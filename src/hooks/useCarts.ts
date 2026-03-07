@@ -3,21 +3,29 @@ import { cartsKeys, getCartsList, getCartById, updateCartById } from '../api/car
 import type { UpdateCartPayload, Cart } from '../types/cart'
 import { useCartFiltersStore } from '../store/cartFilters'
 
+function parsePositiveInt(value: string): number | null {
+  if (value.trim() === '') return null
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed <= 0) return null
+  return parsed
+}
+
 export function useCartList() {
   const { page, limit, userId } = useCartFiltersStore()
   const skip = (page - 1) * limit
+  const parsedUserId = parsePositiveInt(userId)
 
   const query = useQuery({
     queryKey: cartsKeys.list({
       limit,
       skip,
-      userId: userId ? Number(userId) : null,
+      userId: parsedUserId,
     }),
     queryFn: () =>
       getCartsList({
         limit,
         skip,
-        userId: userId ? Number(userId) : null,
+        userId: parsedUserId,
       }),
     placeholderData: (previous) => previous,
   })
@@ -31,19 +39,26 @@ export function useCartList() {
   }
 }
 
-export function useCart(id: number) {
+export function useCart(id: number | null) {
   return useQuery({
-    queryKey: cartsKeys.detail(id),
-    queryFn: () => getCartById(id),
+    queryKey: id == null ? [...cartsKeys.detail(0), 'invalid'] : cartsKeys.detail(id),
+    queryFn: () => getCartById(id as number),
+    enabled: id != null,
   })
 }
 
-export function useUpdateCart(id: number) {
+export function useUpdateCart(id: number | null) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (payload: UpdateCartPayload) => updateCartById(id, payload),
+    mutationFn: (payload: UpdateCartPayload) => {
+      if (id == null) {
+        throw new Error('Invalid cart id')
+      }
+      return updateCartById(id, payload)
+    },
     onSuccess: (updatedCart) => {
+      if (id == null) return
       queryClient.setQueryData(cartsKeys.detail(id), updatedCart)
 
       queryClient.setQueriesData(

@@ -24,7 +24,8 @@ function productsEqualByQuantity(
 export function CartDetailsPage() {
   const navigate = useNavigate()
   const params = useParams<{ id: string }>()
-  const id = Number(params.id)
+  const parsedId = Number(params.id)
+  const id = Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null
 
   const { data: cart, isLoading, isError, error } = useCart(id)
   const updateMutation = useUpdateCart(id)
@@ -107,6 +108,8 @@ export function CartDetailsPage() {
 
         {isLoading ? (
           <S.StatusText>Loading cart…</S.StatusText>
+        ) : id == null ? (
+          <S.StatusText>Invalid cart id</S.StatusText>
         ) : isError ? (
           <>
             <S.StatusText>Unable to load cart</S.StatusText>
